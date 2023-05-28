@@ -1,3 +1,5 @@
+using Hangfire;
+using Hangfire.Storage.SQLite;
 using LoggingAndLogMonitoring.Api.Configurations;
 using LoggingAndLogMonitoring.Data;
 using LoggingAndLogMonitoring.Domain;
@@ -15,19 +17,24 @@ builder.Services.AddDbContext<HangfireSendGridDbContext>((serviceProvider, dbCon
     var databaseOptions = serviceProvider.GetService<IOptions<DatabaseOption>>()!.Value;
 
     dbContextOptionsBuilder.UseSqlServer(databaseOptions.ConnectionString,
-
         sqlOptionsAction =>
         {
-            sqlOptionsAction.EnableRetryOnFailure(databaseOptions.MaxRetryCount, TimeSpan.FromSeconds(databaseOptions.MaxRetryDelay), databaseOptions.ErrorNumbersToAdd);
+            sqlOptionsAction.EnableRetryOnFailure(databaseOptions.MaxRetryCount,
+                TimeSpan.FromSeconds(databaseOptions.MaxRetryDelay), databaseOptions.ErrorNumbersToAdd);
             sqlOptionsAction.CommandTimeout(databaseOptions.CommandTimeout);
         });
 
-    dbContextOptionsBuilder.EnableSensitiveDataLogging(true);
-    dbContextOptionsBuilder.EnableDetailedErrors(true);
+    dbContextOptionsBuilder.EnableSensitiveDataLogging();
+    dbContextOptionsBuilder.EnableDetailedErrors();
 });
 
 builder.Services.AddTransient<IRepository, Repository>();
 builder.Services.AddTransient<IUserLogic, UserLogic>();
+
+builder.Services.AddHangfire(opt =>
+    opt.UseSQLiteStorage(builder.Configuration.GetValue<string>("SqliteDb:SqliteDbName"))
+);
+
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
