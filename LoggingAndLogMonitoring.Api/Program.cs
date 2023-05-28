@@ -1,5 +1,6 @@
 using Hangfire;
 using Hangfire.Storage.SQLite;
+using HangfireBasicAuthenticationFilter;
 using LoggingAndLogMonitoring.Api.Configurations;
 using LoggingAndLogMonitoring.Data;
 using LoggingAndLogMonitoring.Domain;
@@ -11,6 +12,9 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.ConfigureOptions<DatabaseOptionSetup>();
 builder.Services.ConfigureOptions<EmailSettingSetup>();
+
+builder.Services.AddTransient<IUserLogic, UserLogic>();
+builder.Services.ConfigureDomainService();
 
 builder.Services.AddDbContext<HangfireSendGridDbContext>((serviceProvider, dbContextOptionsBuilder) =>
 {
@@ -29,11 +33,12 @@ builder.Services.AddDbContext<HangfireSendGridDbContext>((serviceProvider, dbCon
 });
 
 builder.Services.AddTransient<IRepository, Repository>();
-builder.Services.AddTransient<IUserLogic, UserLogic>();
 
 builder.Services.AddHangfire(opt =>
     opt.UseSQLiteStorage(builder.Configuration.GetValue<string>("SqliteDb:SqliteDbName"))
 );
+
+builder.Services.AddHangfireServer();
 
 
 builder.Services.AddControllers();
@@ -52,8 +57,25 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    DashboardTitle = "Logging And Log Monitoring Background Jobs",
+    Authorization = new[]
+    {
+        new HangfireCustomBasicAuthenticationFilter
+        {
+            Pass = "mattie",
+            User = "Euler"
+        }
+    }
+});
+
 app.UseAuthorization();
 
 app.MapControllers();
+
+#pragma warning disable CS0618
+RecurringJob.AddOrUpdate<IServiceManagement>(x => x.SendBatchMail(), "0 */2 * ? * *");
+#pragma warning restore CS0618
 
 app.Run();
