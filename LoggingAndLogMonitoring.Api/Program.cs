@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Hangfire;
 using Hangfire.Storage.SQLite;
 using HangfireBasicAuthenticationFilter;
@@ -11,11 +10,14 @@ using Microsoft.Extensions.Options;
 var builder = WebApplication.CreateBuilder(args);
 
 
+builder.Logging.AddFilter("LoggingAndLogMonitoring", LogLevel.Debug); // add general log filter
+
+
 // specifying log entries destination
-var path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-var tracePath = Path.Join(path, $"LoggingAndLogMonitoring_{DateTime.UtcNow:yyyyMMdd-HHmm}.txt");
-Trace.Listeners.Add(new TextWriterTraceListener(File.CreateText(tracePath)));
-Trace.AutoFlush = true;
+// var path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+// var tracePath = Path.Join(path, $"LoggingAndLogMonitoring_{DateTime.UtcNow:yyyyMMdd-HHmm}.txt");
+// Trace.Listeners.Add(new TextWriterTraceListener(File.CreateText(tracePath)));
+// Trace.AutoFlush = true;
 
 
 // Add services to the container.
