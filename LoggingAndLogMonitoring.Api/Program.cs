@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Hangfire;
 using Hangfire.Storage.SQLite;
 using HangfireBasicAuthenticationFilter;
@@ -8,6 +9,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
+
+
+// specifying log entries destination
+var path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+var tracePath = Path.Join(path, $"LoggingAndLogMonitoring_{DateTime.UtcNow:yyyyMMdd-HHmm}.txt");
+Trace.Listeners.Add(new TextWriterTraceListener(File.CreateText(tracePath)));
+Trace.AutoFlush = true;
+
 
 // Add services to the container.
 builder.Services.ConfigureOptions<DatabaseOptionSetup>();
@@ -28,8 +37,8 @@ builder.Services.AddDbContext<HangfireSendGridDbContext>((serviceProvider, dbCon
             sqlOptionsAction.CommandTimeout(databaseOptions.CommandTimeout);
         });
 
-    dbContextOptionsBuilder.EnableSensitiveDataLogging();
-    dbContextOptionsBuilder.EnableDetailedErrors();
+    // dbContextOptionsBuilder.EnableSensitiveDataLogging();
+    // dbContextOptionsBuilder.EnableDetailedErrors();
 });
 
 builder.Services.AddTransient<IRepository, Repository>();
@@ -55,6 +64,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.MapFallback(() => Results.Redirect("/swagger"));
 app.UseHttpsRedirection();
 
 app.UseHangfireDashboard("/hangfire", new DashboardOptions
@@ -71,11 +81,10 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
 });
 
 app.UseAuthorization();
-
 app.MapControllers();
 
 #pragma warning disable CS0618
-RecurringJob.AddOrUpdate<IServiceManagement>(x => x.SendBatchMail(), "0 */2 * ? * *");
+// RecurringJob.AddOrUpdate<IServiceManagement>(x => x.SendBatchMail(), "0 */2 * ? * *");
 #pragma warning restore CS0618
 
 app.Run();

@@ -1,15 +1,21 @@
-﻿using LoggingAndLogMonitoring.Data.Entities;
+﻿using System.Diagnostics;
+using LoggingAndLogMonitoring.Data.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace LoggingAndLogMonitoring.Data
 {
     public class Repository : IRepository
     {
         private readonly HangfireSendGridDbContext _dbContext;
+        private readonly ILogger<Repository> _logger;
+        private readonly ILogger _loggerFactory;
 
-        public Repository(HangfireSendGridDbContext dbContext)
+        public Repository(HangfireSendGridDbContext dbContext, ILogger<Repository> logger, ILoggerFactory loggerFactory)
         {
             _dbContext = dbContext;
+            _logger = logger;
+            _loggerFactory = loggerFactory.CreateLogger("DataAccessLayer");
         }
 
         public async Task<int> AddUserAsync(User user, string propertyName)
@@ -31,7 +37,7 @@ namespace LoggingAndLogMonitoring.Data
         public async Task DeleteUserAsync(int id)
         {
             var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Id == id);
-            if (user == null) { return; }
+            if (user == null) return;
 
             _dbContext.Remove(user);
             await _dbContext.SaveChangesAsync();
@@ -44,11 +50,24 @@ namespace LoggingAndLogMonitoring.Data
 
         public User GetUser(int id)
         {
-            return _dbContext.Users.FirstOrDefault(x => x.Id == id)!;
+            var timer = new Stopwatch();
+            timer.Start();
+            var user = _dbContext.Users.FirstOrDefault(x => x.Id == id)!;
+            timer.Stop();
+
+            _logger.LogDebug("Querying users for {Id} finished in {Milliseconds} milliseconds",
+                id, timer.ElapsedMilliseconds
+            );
+            _loggerFactory.LogInformation("(F) Querying users for {Id} finished in {Ticks} ticks",
+                id, timer.ElapsedTicks
+            );
+
+            return user;
         }
 
         public async Task<User> GetUserByIdAsync(int id)
         {
+            _logger.LogInformation("Getting a single user in repository for Id: ({Id})", id);
             return await _dbContext.Users.FirstOrDefaultAsync(x => x.Id == id)!;
         }
 
